@@ -1,7 +1,27 @@
 import { Facebook, Twitter, Linkedin, Instagram, Mail, Phone, MapPin } from 'lucide-react'
+import { useRouter } from 'next/router'
 
 export function Footer() {
   const currentYear = new Date().getFullYear()
+  const router = useRouter()
+
+  const handleNavClick = (href: string) => {
+    if (href.startsWith('#')) {
+      if (router.pathname !== '/') {
+        router.push('/').then(() => {
+          setTimeout(() => {
+            const el = document.getElementById(href.replace('#', ''))
+            el?.scrollIntoView({ behavior: 'smooth' })
+          }, 120)
+        })
+      } else {
+        const el = document.getElementById(href.replace('#', ''))
+        el?.scrollIntoView({ behavior: 'smooth' })
+      }
+    } else {
+      router.push(href)
+    }
+  }
 
   return (
     <footer className="bg-gradient-to-r from-gray-900 via-gray-900 to-blue-900 text-white">
@@ -20,10 +40,10 @@ export function Footer() {
           <div>
             <h4 className="font-semibold mb-4">Quick Links</h4>
             <ul className="space-y-2 text-gray-300 text-sm">
-              <li><a href="#home" className="hover:text-orange-400 transition-colors">Home</a></li>
-              <li><a href="#services" className="hover:text-orange-400 transition-colors">Services</a></li>
-              <li><a href="#products" className="hover:text-orange-400 transition-colors">Products</a></li>
-              <li><a href="#about" className="hover:text-orange-400 transition-colors">About</a></li>
+              <li><button onClick={() => handleNavClick('#home')} className="nav-quick-link hover:text-orange-400 transition-colors">Home</button></li>
+              <li><button onClick={() => handleNavClick('#services')} className="nav-quick-link hover:text-orange-400 transition-colors">Services</button></li>
+              <li><button onClick={() => handleNavClick('#products')} className="nav-quick-link hover:text-orange-400 transition-colors">Products</button></li>
+              <li><button onClick={() => handleNavClick('#about')} className="nav-quick-link hover:text-orange-400 transition-colors">About</button></li>
             </ul>
           </div>
 

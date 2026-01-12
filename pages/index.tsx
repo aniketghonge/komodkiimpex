@@ -13,7 +13,7 @@ export default function Home() {
     <>
       <Head>
         <title>Komodki Impex - Global Export Solutions</title>
-        <meta name="description" content="Your trusted global partner for premium minerals, hardware, and petroleum jelly exports. 15+ years of excellence in international trade." />
+        <meta name="description" content="Reliable Global Trade Partner for Minerals, Hardware & Petroleum Jelly" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
       </Head>

@@ -132,7 +132,7 @@ export default function ProductDetailPage() {
       <Head>
         <title>{prod.name} - Komodki Impex</title>
       </Head>
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen bg-white bg-surface">
         <Header />
         <main className="max-w-6xl mx-auto p-6">
           <div className="grid md:grid-cols-3 gap-6">

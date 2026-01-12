@@ -108,17 +108,24 @@ export default function ProductCategoryPage({ category, categoryName }: Props) {
       const res = await fetch('/api/product-categories')
       const json = await res.json()
       if (!res.ok) throw new Error(json.message || 'Failed to fetch categories')
-      const found = (json.categories || []).find((c: any) => c.slug === category)
+
+      const categories = (json.categories || []) as any[]
+      // Try to match by slug first, then by numeric id (some links pass the type id)
+      let found = categories.find((c: any) => c.slug === category)
+      if (!found && category && /^\d+$/.test(String(category))) {
+        found = categories.find((c: any) => String(c.id) === String(category))
+      }
+
       if (found) {
         setCategoryDesc(found.description)
-        if (found.product_type_img) {
-          const val = String(found.product_type_img)
-          setCategoryImage(/^https?:\/\//i.test(val) ? val : `${STORAGE_BASE_URL}${val}`)
-        }
-        // Fetch products for this product type id (use server RPC get_products via API)
+        // Don't display product-type image on listing (we only show product images)
+        // Fetch products (prefer RPC by type id) and packaging for this product type
         fetchProducts(found.id)
-        // Fetch packaging for this category by ID
         fetchPackagingForCategory(found.id)
+      } else if (category && /^\d+$/.test(String(category))) {
+        // Category was provided as a numeric type id directly — fetch by that id
+        fetchProducts(String(category))
+        fetchPackagingForCategory(String(category))
       }
     } catch (err) {
       // not critical
@@ -224,6 +231,7 @@ export default function ProductCategoryPage({ category, categoryName }: Props) {
 
   // Only use dynamic packaging; do not fallback to hardcoded map
   const packaging = packagingData || null
+  const headingGradient = 'bg-gradient-to-r ' + (packaging?.gradient || packagingMap[category]?.gradient || 'from-blue-600 to-orange-500')
 
   return (
     <>
@@ -240,21 +248,11 @@ export default function ProductCategoryPage({ category, categoryName }: Props) {
             <div className="max-w-6xl mx-auto px-4 py-20 mt-16">
               <div className="flex items-center justify-between mb-8">
                 <div>
-                  <button
-                    onClick={() => router.push('/')}
-                    className="inline-flex items-center justify-center px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-full font-semibold border border-white/20 transition-all mr-4"
-                  >
-                    ← Back
-                  </button>
-                  <h1 className="text-3xl font-bold">{categoryName}</h1>
-                  <p className="text-gray-600 mt-2">{categoryDesc || `Browse products in the ${categoryName.toLowerCase()} category.`}</p>
+                  <h1 className={`text-4xl md:text-5xl font-bold leading-relaxed mb-2 bg-clip-text text-transparent ${headingGradient}`}>{categoryName}</h1>
+                  <p className="text-lg text-gray-600 mt-2">{categoryDesc || `Browse products in the ${categoryName.toLowerCase()} category.`}</p>
                 </div>
 
-                {categoryImage && (
-                  <div className="hidden md:block w-56 h-40 rounded-lg overflow-hidden shadow-md">
-                    <img src={categoryImage} alt={`${categoryName} image`} className="w-full h-full object-cover" />
-                  </div>
-                )}
+
               </div>
 
               {loading ? (
@@ -286,7 +284,7 @@ export default function ProductCategoryPage({ category, categoryName }: Props) {
               {/* Product-specific Packaging Card */}
               {packaging ? (
                 <div className="mt-20 pt-16 border-t border-gray-200">
-                  <h2 className="text-3xl font-bold mb-8 text-center">Packaging for {packaging.name}</h2>
+                  <h2 className="text-3xl font-bold mb-8 text-center bg-gradient-to-r from-blue-600 to-orange-500 bg-clip-text text-transparent">Professional Packaging</h2>
                   <PackagingCard packaging={packaging} />
                 </div>
               ) : (
@@ -306,109 +304,102 @@ export default function ProductCategoryPage({ category, categoryName }: Props) {
 function ProductCard({ product, category }: { product: any, category: string }) {
   const [open, setOpen] = useState(false)
   const [idx, setIdx] = useState(0)
-  const router = useRouter()
-  const slug = product.slug || (product.name ? String(product.name).toLowerCase().replace(/\s+/g, '-') : String(product.id || 'product'))
 
-  const images = [product.image].filter(Boolean)
+  const images = [product.image].filter(Boolean) as string[]
   if (product.imageB) images.push(product.imageB)
 
+  // Auto-advance slideshow for cards that have multiple images
+  useEffect(() => {
+    if (images.length < 2) return
+    const t = setInterval(() => setIdx((i) => (i + 1) % images.length), 4000)
+    return () => clearInterval(t)
+  }, [images.length])
+
+  // Helper to render specs table from JSON or object
+  const renderSpecs = (specs: any) => {
+    if (!specs) return null
+    let obj: any = specs
+    if (typeof specs === 'string') {
+      try { obj = JSON.parse(specs) } catch { try { obj = JSON.parse(String(specs).replace(/\r\n|\n/g, '')) } catch { obj = null } }
+    }
+    if (!obj || typeof obj !== 'object') return (<pre className="text-sm text-gray-700 bg-gray-50 rounded p-3 mt-2 overflow-auto">{String(specs)}</pre>)
+
+    return (
+      <div className="mb-4">
+        <h4 className="font-semibold mb-2">Specifications</h4>
+        <div className="overflow-auto border rounded bg-gray-50 p-3">
+          <table className="w-full text-sm">
+            <tbody>
+              {Object.entries(obj).map(([k, v]) => (
+                <tr key={k} className="odd:bg-white even:bg-gray-50">
+                  <td className="py-1 pr-4 font-medium text-gray-700 w-40">{k}</td>
+                  <td className="py-1 text-gray-700">{String(v)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <article role="button" tabIndex={0} onClick={() => router.push(`/products/${category}/${encodeURIComponent(slug)}`)} onKeyDown={(e) => { if (e.key === 'Enter') router.push(`/products/${category}/${encodeURIComponent(slug)}`) }} className="group cursor-pointer bg-white bg-surface rounded-2xl shadow-md border border-gray-100 overflow-hidden">
-      <div className="flex flex-col md:flex-row">
-        {/* Left: image / visual block (30-40% on desktop) */}
-        <div className="md:w-2/5 w-full h-56 md:h-auto relative bg-gradient-to-br from-neutral-800 to-neutral-900 text-white md:rounded-l-2xl overflow-hidden">
-          <div className="absolute inset-0">
-            {images.length ? (
-              <img src={images[idx]} alt={product.name} className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full bg-gradient-to-br from-gray-700 to-neutral-800 flex items-center justify-center">
-                <div className="text-sm text-white/80 px-4">No image available</div>
-              </div>
-            )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-          </div>
-          {/* Slide controls (center-left/right, show on hover) */}
+    <article className="group bg-white bg-surface rounded-2xl shadow-md border border-gray-100 overflow-hidden">
+      <div className="flex flex-col md:flex-row md:items-center gap-6">
+        {/* Left: square image block (card-shaped, matches product-type aesthetic) */}
+        <div className="w-full md:w-80 h-80 aspect-square relative rounded-2xl overflow-hidden bg-neutral-800 text-white flex-shrink-0">
+          {images.length ? (
+            images.map((src, i) => (
+              <div
+                key={i}
+                className={`absolute inset-0 bg-cover bg-center transition-opacity duration-1000 ease-in-out ${i === idx ? 'opacity-100' : 'opacity-0'}`}
+                style={{ backgroundImage: `url(${src})` } as any}
+              />
+            ))
+          ) : (
+            <div className="absolute inset-0 bg-gradient-to-br from-gray-700 to-neutral-800 flex items-center justify-center">
+              <div className="text-sm text-white/80 px-4">No image available</div>
+            </div>
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+
+          {/* Optional slide controls centered vertically */}
           {images.length > 1 && (
             <>
-              <button aria-label="Previous" onClick={(e) => { e.stopPropagation(); setIdx((idx + images.length - 1) % images.length) }} className="opacity-0 group-hover:opacity-100 transition-opacity absolute left-3 top-1/2 -translate-y-1/2 bg-black/40 text-white p-3 rounded-full">‹</button>
-              <button aria-label="Next" onClick={(e) => { e.stopPropagation(); setIdx((idx + 1) % images.length) }} className="opacity-0 group-hover:opacity-100 transition-opacity absolute right-3 top-1/2 -translate-y-1/2 bg-black/40 text-white p-3 rounded-full">›</button>
+              <button aria-label="Previous" onClick={() => setIdx((idx + images.length - 1) % images.length)} className="opacity-0 group-hover:opacity-100 transition-opacity absolute left-3 top-1/2 -translate-y-1/2 bg-black/40 text-white p-2 rounded-full">‹</button>
+              <button aria-label="Next" onClick={() => setIdx((idx + 1) % images.length)} className="opacity-0 group-hover:opacity-100 transition-opacity absolute right-3 top-1/2 -translate-y-1/2 bg-black/40 text-white p-2 rounded-full">›</button>
             </>
           )}
         </div>
 
-        {/* Right: details 60-70% */}
-        <div className="md:w-3/5 w-full p-6 flex flex-col justify-between md:rounded-r-2xl">
+        {/* Right: title, description and corner "Know more" */}
+        <div className="md:flex-1 w-full p-6 flex flex-col justify-between relative">
           <div>
-            <h3 className="text-2xl font-semibold mb-2">{product.name}</h3>
-            <p className="text-gray-600 mb-4">{product.short_description || product.short}</p>
+            <h3 className="text-3xl font-extrabold mb-3 text-gray-900">{product.name}</h3>
+            <p className="text-lg text-gray-600 mb-4">{product.short_description || product.short}</p>
           </div>
 
-          <div className="flex items-center justify-between mt-4">
-            <div className="flex items-center gap-3">
-              {/* Removed 'View Product' button per request; card itself is clickable */}
-            </div>
+          <div className="absolute top-4 right-4 md:static">
+            <button
+              onClick={() => setOpen(!open)}
+              aria-expanded={open}
+              className="text-sm text-orange-600 font-medium inline-flex items-center gap-2"
+            >
+              {open ? (<><ChevronUp className="w-4 h-4" /> Know more</>) : (<><ChevronDown className="w-4 h-4" /> Know more</>)}
+            </button>
+          </div>
+        </div>
+      </div>
 
-            <div>
-              <button
-                onClick={(e) => { e.stopPropagation(); setOpen(!open) }}
-                aria-expanded={open}
-                className="text-sm text-orange-600 font-medium inline-flex items-center gap-2"
-              >
-                {open ? (<><ChevronUp className="w-4 h-4" /> Know more</>) : (<><ChevronDown className="w-4 h-4" /> Know more</>)}
-              </button>
-            </div>
+      {/* Expandable section that spans the full card width and appears below image+description */}
+      <div className={`overflow-hidden transition-all duration-200 ${open ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}>
+        <div className="p-6 border-t border-gray-100 text-sm text-gray-700">
+          <div className="mb-4">
+            <h4 className="font-semibold mb-2">Usage</h4>
+            <p className="text-sm text-gray-700">{product.product_usage ? String(product.product_usage) : 'Usage information not provided. Please contact us for details.'}</p>
           </div>
 
-          {open && (
-            <div className="mt-4 border-t border-gray-100 pt-4 text-sm text-gray-700">
-              {Object.keys(product.details || {}).length ? (
-                <table className="w-full text-sm text-left mb-4">
-                  <tbody>
-                    {Object.entries(product.details || {}).map(([k, v]) => (
-                      <tr key={k} className="odd:bg-white even:bg-gray-50">
-                        <td className="py-2 pr-4 font-medium text-gray-700 w-48">{k}</td>
-                        <td className="py-2 text-gray-700">{String(v)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              ) : (
-                <p className="mb-4">{product.product_desc || product.short_description || 'No further details available.'}</p>
-              )}
-
-              {product.product_specs && typeof product.product_specs === 'object' && (
-                <div className="mb-4">
-                  <h4 className="font-semibold mb-2">Specifications</h4>
-                  <div className="overflow-auto border rounded bg-gray-50 p-3">
-                    <table className="w-full text-sm">
-                      <tbody>
-                        {Object.entries(product.product_specs).map(([k, v]) => (
-                          <tr key={k} className="odd:bg-white even:bg-gray-50">
-                            <td className="py-1 pr-4 font-medium text-gray-700 w-40">{k}</td>
-                            <td className="py-1 text-gray-700">{String(v)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              {product.product_specs && typeof product.product_specs !== 'object' && (
-                <div className="mb-4">
-                  <h4 className="font-semibold mb-2">Specifications</h4>
-                  <pre className="text-sm text-gray-700 bg-gray-50 rounded p-3 mt-2 overflow-auto">{String(product.product_specs)}</pre>
-                </div>
-              )}
-
-              {product.product_usage && (
-                <div>
-                  <h4 className="font-semibold mb-2">Usage</h4>
-                  <p className="text-sm text-gray-700">{product.product_usage}</p>
-                </div>
-              )}
-            </div>
-          )}
+          {renderSpecs(product.product_specs)}
         </div>
       </div>
     </article>

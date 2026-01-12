@@ -28,13 +28,15 @@ body {
 
 h1, h2, h3, h4, h5, h6 {
   font-weight: 700;
-  line-height: 1.3; /* increase so descenders like 'g' are never clipped */
+  /* Slightly increased line-height so descenders like 'g' are not clipped on large headings */
+  line-height: 1.35;
 }
 
 /* Add a little extra bottom spacing for large headings by default */
 h1, h2 {
   margin-bottom: 1rem;
-  padding-bottom: 0.125rem;
+  /* make space for descenders and decorative underlines */
+  padding-bottom: 0.25rem;
 }  
 
 p {
@@ -59,10 +61,12 @@ button {
 
 /* Glassmorphism effect */
 .glass {
+  /* Slight tinted gradient so the header remains visible against white sections */
+  background-image: linear-gradient(135deg, rgba(37,99,235,0.06), rgba(249,115,22,0.04));
   background-color: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 1rem;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 0.75rem;
 }
 
 .glass-sm {
@@ -305,7 +309,7 @@ textarea.input-field {
 
 /* Surface gradient for white areas to pick up brand colors subtly */
 .bg-surface {
-  background-image: linear-gradient(135deg, rgba(37,99,235,0.03), rgba(249,115,22,0.02));
+  background-image: linear-gradient(135deg, rgba(37,99,235,0.06), rgba(249,115,22,0.04));
   background-repeat: no-repeat;
   background-attachment: local;
   background-blend-mode: overlay;
