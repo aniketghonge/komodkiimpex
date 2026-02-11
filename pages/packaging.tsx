@@ -1,9 +1,29 @@
 import Head from 'next/head'
+import { useRouter } from 'next/router'
+import { useEffect } from 'react'
 import { Header } from '@/components/Header'
 import { Packaging } from '@/components/Packaging'
 import { Footer } from '@/components/Footer'
 
 export default function PackagingPage() {
+  const router = useRouter()
+
+  // Handle browser back button
+  useEffect(() => {
+    const handleBeforePopState = (e: PopStateEvent) => {
+      router.push('/').then(() => {
+        setTimeout(() => {
+          const element = document.getElementById('packaging')
+          element?.scrollIntoView({ behavior: 'smooth' })
+        }, 100)
+      })
+      return false
+    }
+
+    window.addEventListener('popstate', handleBeforePopState)
+    return () => window.removeEventListener('popstate', handleBeforePopState)
+  }, [router])
+
   return (
     <>
       <Head>

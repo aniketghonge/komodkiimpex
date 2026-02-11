@@ -164,7 +164,7 @@ export function Contact() {
               <Phone className="w-6 h-6 text-orange-500 flex-shrink-0 mt-1" />
               <div>
                 <h4 className="font-semibold text-gray-900 mb-1">Phone</h4>
-                <p className="text-gray-600">+1 (555) 123-4567</p>
+                <p className="text-gray-600">+919833964347</p>
               </div>
             </div>
 
@@ -173,7 +173,7 @@ export function Contact() {
               <MapPin className="w-6 h-6 text-orange-500 flex-shrink-0 mt-1" />
               <div>
                 <h4 className="font-semibold text-gray-900 mb-1">Address</h4>
-                <p className="text-gray-600">123 Business Street, Trade City, TC 12345</p>
+                <p className="text-gray-600">Shivneri C-2, Ashok Nager,<br />Dahisar (East), Mumbai - 400068,<br />Maharashtra, India.</p>
               </div>
             </div>
 

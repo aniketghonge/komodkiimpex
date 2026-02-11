@@ -68,11 +68,11 @@ export function Footer() {
               </li>
               <li className="flex items-center gap-2">
                 <Phone className="w-4 h-4 text-orange-400" />
-                +1 (555) 123-4567
+                +919833964347
               </li>
               <li className="flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-orange-400" />
-                Business Street, Trade City
+                Shivneri C-2, Ashok Nager, Dahisar (East), Mumbai - 400068, Maharashtra, India.
               </li>
             </ul>
           </div>

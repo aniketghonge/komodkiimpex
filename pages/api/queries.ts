@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { supabase } from '@/lib/supabase'
+import { appSettings } from '@/lib/appSettings'
 import nodemailer from 'nodemailer'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -35,81 +36,78 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log('create_user_query result:', data)
 
-    // Send notification email if SMTP is configured
-    const SMTP_HOST = process.env.SMTP_HOST
-    const SMTP_PORT = Number(process.env.SMTP_PORT || 587)
-    const SMTP_USER = process.env.SMTP_USER
-    const SMTP_PASS = process.env.SMTP_PASS
-    const FROM_EMAIL = process.env.FROM_EMAIL || SMTP_USER
-    const TO_EMAIL = process.env.TO_EMAIL || SMTP_USER
+    // Send notification email using app settings
+    const emailConfig = appSettings.email
+    let mailError: any = null
 
-    if (SMTP_HOST && SMTP_USER && SMTP_PASS) {
-      let mailError: any = null
+    try {
+      const transporter = nodemailer.createTransport({
+        host: emailConfig.smtp.host,
+        port: emailConfig.smtp.port,
+        secure: emailConfig.smtp.secure,
+        auth: {
+          user: emailConfig.smtp.auth.user,
+          pass: emailConfig.smtp.auth.pass,
+        },
+      })
+
+      // Verify SMTP connection early (helps find config/auth errors)
       try {
-        const transporter = nodemailer.createTransport({
-          host: SMTP_HOST,
-          port: SMTP_PORT,
-          secure: SMTP_PORT === 465,
-          auth: { user: SMTP_USER, pass: SMTP_PASS }
-        })
+        await transporter.verify()
+        console.log('SMTP connection verified successfully')
+      } catch (verifyErr) {
+        console.error('SMTP verify failed:', verifyErr)
+        mailError = verifyErr
+      }
 
-        // Verify SMTP connection early (helps find config/auth errors)
+      const subject = `New contact inquiry: ${name}`
+      const html = `
+        <h3>New contact inquiry from Komodki Impex Website</h3>
+        <p><strong>Name:</strong> ${escapeHtml(name)}</p>
+        <p><strong>Email:</strong> ${escapeHtml(email)}</p>
+        <p><strong>Company:</strong> ${escapeHtml(company || '—')}</p>
+        <p><strong>Country:</strong> ${escapeHtml(country || '—')}</p>
+        <p><strong>Postal Code:</strong> ${escapeHtml(postalCode || '—')}</p>
+        <h4>Message</h4>
+        <p>${escapeHtml(message).replace(/\n/g, '<br/>')}</p>
+        <hr/>
+        <p><em>Saved to DB at ${new Date().toISOString()}</em></p>
+      `
+
+      if (!mailError) {
         try {
-          await transporter.verify()
-        } catch (verifyErr) {
-          console.error('SMTP verify failed:', verifyErr)
-          mailError = verifyErr
+          await transporter.sendMail({
+            from: `${emailConfig.displayName} <${emailConfig.from}>`,
+            to: emailConfig.to,
+            replyTo: email,
+            subject,
+            html,
+            text: `${name} (${email})\n\n${message}`,
+          })
+          console.log('Email sent successfully to:', emailConfig.to)
+        } catch (sendErr) {
+          console.error('Failed to send notification email:', sendErr)
+          mailError = sendErr
         }
-
-        const subject = `New contact inquiry: ${name}`
-        const html = `
-          <h3>New contact inquiry</h3>
-          <p><strong>Name:</strong> ${escapeHtml(name)}</p>
-          <p><strong>Email:</strong> ${escapeHtml(email)}</p>
-          <p><strong>Company:</strong> ${escapeHtml(company || '—')}</p>
-          <p><strong>Country:</strong> ${escapeHtml(country || '—')}</p>
-          <p><strong>Postal Code:</strong> ${escapeHtml(postalCode || '—')}</p>
-          <h4>Message</h4>
-          <p>${escapeHtml(message).replace(/\n/g, '<br/>')}</p>
-          <hr/>
-          <p>Saved to DB at ${new Date().toISOString()}</p>
-        `
-
-        if (!mailError) {
-          try {
-            await transporter.sendMail({
-              from: FROM_EMAIL,
-              to: TO_EMAIL,
-              replyTo: email,
-              subject,
-              html,
-              text: `${name} (${email})\n\n${message}`
-            })
-          } catch (sendErr) {
-            console.error('Failed to send notification email:', sendErr)
-            mailError = sendErr
-          }
-        }
-
-      } catch (mailErrOuter) {
-        console.error('Unexpected mail error:', mailErrOuter)
-        mailError = mailErrOuter
       }
-
-      // If caller provided the correct debug token header, include mail error details in the response for debugging
-      const debugToken = process.env.EMAIL_DEBUG_TOKEN
-      const callerToken = String(req.headers['x-email-debug'] || '')
-      if (mailError && debugToken && callerToken && debugToken === callerToken) {
-        return res.status(500).json({ message: 'Query saved but mail failed', mailError: String(mailError) })
-      }
-
-      if (mailError) {
-        // generic warning for production - do not expose internals
-        console.warn('Email failed to send; check SMTP settings and SMTP provider logs')
-      }
+    } catch (mailErrOuter) {
+      console.error('Unexpected mail error:', mailErrOuter)
+      mailError = mailErrOuter
     }
 
-    return res.status(200).json({ message: 'Query saved', data })
+    // If caller provided the correct debug token header, include mail error details in the response for debugging
+    const debugToken = process.env.EMAIL_DEBUG_TOKEN
+    const callerToken = String(req.headers['x-email-debug'] || '')
+    if (mailError && debugToken && callerToken && debugToken === callerToken) {
+      return res.status(500).json({ message: 'Query saved but mail failed', mailError: String(mailError) })
+    }
+
+    if (mailError) {
+      // generic warning for production - do not expose internals
+      console.warn('Email failed to send; check SMTP settings and SMTP provider logs')
+    }
+
+    return res.status(200).json({ message: 'Query saved and email notification sent', data })
   } catch (err) {
     console.error('API error:', err)
     return res.status(500).json({ message: 'Internal server error' })

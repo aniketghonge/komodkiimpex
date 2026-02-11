@@ -21,6 +21,17 @@ export default function ProductDetailPage() {
     fetchProduct()
   }, [category, product])
 
+  // Handle browser back button
+  useEffect(() => {
+    const handleBeforePopState = (e: PopStateEvent) => {
+      router.push(`/products/${category}`)
+      return false
+    }
+
+    window.addEventListener('popstate', handleBeforePopState)
+    return () => window.removeEventListener('popstate', handleBeforePopState)
+  }, [category, router])
+
   const fetchProduct = async () => {
     setLoading(true)
     try {
@@ -117,6 +128,15 @@ export default function ProductDetailPage() {
       setPackaging(grouped)
     } catch (err) {
       console.warn('Packaging fetch failed:', err)
+    }
+  }
+
+  const handleBack = () => {
+    // Try to go back to the category page if it's in history, otherwise navigate to category
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back()
+    } else {
+      router.push(`/products/${category}`)
     }
   }
 

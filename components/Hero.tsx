@@ -56,12 +56,11 @@ export function Hero() {
         <div className="absolute inset-0 bg-gradient-to-r from-blue-900/90 via-blue-900/80 to-orange-900/80 z-0" />
       )}
 
-      {/* Subtle brand gradient overlay above the image so slides keep a consistent tint */}
-      <div className="absolute inset-0 bg-gradient-to-r from-blue-900/20 via-transparent to-orange-500/18 z-10 pointer-events-none" />
-
-      {/* Decorative blur circles */}
-      <div className="absolute top-20 right-20 w-72 h-72 bg-orange-500 rounded-full blur-3xl opacity-10 z-0" />
-      <div className="absolute bottom-20 left-20 w-96 h-96 bg-blue-500 rounded-full blur-3xl opacity-10 z-0" />
+      {/* Glassmorphism Overlay - Blue to Orange Gradient with Subtle Blur Effect */}
+      <div className="absolute inset-0 z-10 pointer-events-none">
+        {/* Main gradient overlay with minimal blur */}
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/35 via-purple-500/15 to-orange-600/35" style={{ backdropFilter: 'blur(1px)' }} />
+      </div>
 
 
 

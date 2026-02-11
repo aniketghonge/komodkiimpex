@@ -31,6 +31,22 @@ export default function ProductCategoryPage({ category, categoryName }: Props) {
     fetchProducts(typeId)
   }, [category, router.query?.typeId])
 
+  // Handle browser back button
+  useEffect(() => {
+    const handleBeforePopState = (e: PopStateEvent) => {
+      router.push('/').then(() => {
+        setTimeout(() => {
+          const element = document.getElementById('products')
+          element?.scrollIntoView({ behavior: 'smooth' })
+        }, 100)
+      })
+      return false
+    }
+
+    window.addEventListener('popstate', handleBeforePopState)
+    return () => window.removeEventListener('popstate', handleBeforePopState)
+  }, [router])
+
   const fetchProducts = async (typeId?: number | string) => {
     try {
       const qs = typeId ? `?typeId=${typeId}` : ''

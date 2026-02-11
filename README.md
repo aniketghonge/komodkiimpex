@@ -107,7 +107,8 @@ The project is ready for database integration with:
 
 - **Company**: Komodki Impex
 - **Email**: info@komodkiimpex.com
-- **Phone**: +1 (555) 123-4567
+- **Phone**: +919833964347
+- **Address**: Shivneri C-2, Ashok Nager, Dahisar (East), Mumbai - 400068, Maharashtra, India.
 
 ## 📝 License
 
